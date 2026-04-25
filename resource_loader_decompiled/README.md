@@ -76,20 +76,42 @@ public static ModelInfo load(Context context, Object decryptor, String path1, St
 2. 解析为 JSONObject
 3. 读取 `config.j` 文件并解析
 4. 从 `config.j` 中提取：
-   - `need_png`: 是否需要 PNG 文件
+   - `need_png`: 控制是否启用 mask 功能（详见下方说明）
    - `modelkind`: 模型类型
    - `width`: 默认 540
    - `height`: 默认 960
+   - `res_fmt`: 资源文件扩展名（如 "sij"）
+
+**`need_png` 参数详解**（第 592-632 行）：
+
+`need_png` 参数**不决定** `raw_jpgs` 目录中图片的实际格式，而是控制是否启用 mask 功能：
+
+- **`need_png = 0`**（默认值）：
+  - 检查 `pha` 目录和 `raw_sg` 目录是否存在
+  - 如果两个目录都存在，则设置 `hasMask = true`，会从 `pha` 目录加载 PNG 格式的 mask 文件
+  - 如果任一目录不存在，则设置 `hasMask = false`
+
+- **`need_png = 1`**：
+  - 直接设置 `hasMask = false`
+  - 不加载 mask 文件，即使 `pha` 和 `raw_sg` 目录存在
+
+**重要说明**：
+- `raw_jpgs` 目录中的图片格式由**文件内容**（文件头 Magic Number）决定，不是由 `need_png` 参数决定
+- 即使 `need_png=1`，如果文件内容是 JPEG（文件头是 `FF D8 FF`），它就是 JPEG 格式
+- `res_fmt` 参数只是说明文件扩展名，不影响实际图片格式
+- `need_png` 只影响是否从 `pha` 目录加载额外的 PNG mask 文件
 
 **第四阶段：加载帧数据（第 506-940 行）**
 
-1. 扫描 `raw_jpgs` 目录下的所有图片文件
+1. 扫描 `raw_jpgs` 目录下的所有图片文件（根据 `res_fmt` 参数确定文件扩展名，如 `.sij`）
 2. 为每个图片文件创建 `ModelInfo$Frame` 对象：
    - `index`: 从文件名提取（去掉扩展名）
-   - `rawPath`: 原始图片路径
-   - `maskPath`: 如果 `hasMask=true`，从 `pha` 目录查找对应的 mask 文件
+   - `rawPath`: 原始图片路径（`raw_jpgs` 目录中的图片，实际格式由文件内容决定）
+   - `maskPath`: 如果 `hasMask=true`，从 `pha` 目录查找对应的 PNG mask 文件
    - `sgPath`: 如果 `hasMask=true`，从 `raw_sg` 目录查找对应的文件
    - `rect`: 从 `bbox.j` JSON 中根据 index 获取边界框 `[x1, x2, y1, y2]`
+
+**注意**：`raw_jpgs` 目录中的图片格式（JPEG/PNG）由文件内容决定，不是由 `need_png` 或 `res_fmt` 参数决定。即使扩展名是 `.sij`，如果文件头是 `FF D8 FF`，它就是 JPEG 格式。
 
 3. **人脸处理流程**（从Frame到模型输入）：
    - **Step 1**: 使用 `rect` 从原始图像中裁剪人脸区域（约276×276px）
@@ -231,11 +253,12 @@ public static ModelInfo load(Context context, Object decryptor, String path1, St
 #### config.j
 ```json
 {
-  "need_png": 0,
-  "modelkind": 0,
-  "width": 540,
-  "height": 960,
-  "ranges": [
+  "need_png": 0,        // 控制是否启用 mask 功能（详见下方说明）
+  "modelkind": 0,       // 模型类型
+  "width": 540,         // 视频宽度
+  "height": 960,        // 视频高度
+  "res_fmt": "sij",     // 资源文件扩展名（仅用于标识，不影响实际格式）
+  "ranges": [           // 范围区域配置
     {
       "min": 0,
       "max": 100,
@@ -244,6 +267,22 @@ public static ModelInfo load(Context context, Object decryptor, String path1, St
   ]
 }
 ```
+
+**`need_png` 参数详解**：
+
+⚠️ **重要**：`need_png` 参数**不决定** `raw_jpgs` 目录中图片的实际格式！
+
+| 参数值 | 行为 | 说明 |
+|--------|------|------|
+| `0` (默认) | 检查 `pha` 和 `raw_sg` 目录 | 如果两个目录都存在，则启用 mask 功能（`hasMask=true`），会从 `pha` 目录加载 PNG 格式的 mask 文件 |
+| `1` | 直接禁用 mask 功能 | 设置 `hasMask=false`，不加载 mask 文件，即使 `pha` 和 `raw_sg` 目录存在 |
+
+**图片格式说明**：
+- `raw_jpgs` 目录中的图片格式由**文件内容**（文件头 Magic Number）决定
+- JPEG 文件头：`FF D8 FF`（JFIF 格式）
+- PNG 文件头：`89 50 4E 47 0D 0A 1A 0A`
+- 即使 `need_png=1`，如果文件内容是 JPEG，它就是 JPEG 格式
+- `res_fmt="sij"` 只是说明文件扩展名，不代表实际格式（`.sij` 文件通常是 JPEG 格式）
 
 #### bbox.j
 ```json

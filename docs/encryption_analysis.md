@@ -153,8 +153,27 @@ Convolution              convrelu_0               1 1 audio 2 0=16 1=3 ...
 
 **配置说明**：
 - `width/height`: 视频分辨率 540×960
-- `res_fmt`: 资源格式为 "sij"
-- `removegreen`: 需要去除绿幕
+- `res_fmt`: 资源文件扩展名（如 "sij"），仅用于标识，不影响实际图片格式
+- `need_png`: 控制是否启用 mask 功能（详见下方说明）
+- `removegreen`: 需要去除绿幕（如果存在）
+
+**`need_png` 参数详解**：
+
+⚠️ **重要**：`need_png` 参数**不决定** `raw_jpgs` 目录中图片的实际格式！
+
+`need_png` 参数的作用是控制是否启用 mask 功能：
+
+| 值 | 行为 | 说明 |
+|---|---|---|
+| `0` (默认) | 检查 `pha` 和 `raw_sg` 目录是否存在 | 如果两个目录都存在，则启用 mask 功能（`hasMask=true`），会从 `pha` 目录加载 PNG 格式的 mask 文件 |
+| `1` | 直接禁用 mask 功能 | 设置 `hasMask=false`，不加载 mask 文件，即使 `pha` 和 `raw_sg` 目录存在 |
+
+**图片格式说明**：
+- `raw_jpgs` 目录中的图片格式由**文件内容**（文件头 Magic Number）决定
+- JPEG 文件头：`FF D8 FF`（JFIF 格式）
+- PNG 文件头：`89 50 4E 47 0D 0A 1A 0A`
+- 即使 `need_png=1`，如果文件内容是 JPEG，它就是 JPEG 格式
+- `res_fmt="sij"` 只是说明文件扩展名，不代表实际格式（`.sij` 文件通常是 JPEG 格式）
 
 ### 4. bbox.j (人脸框文件)
 
@@ -178,7 +197,7 @@ Convolution              convrelu_0               1 1 audio 2 0=16 1=3 ...
 
 ### 5. *.sij 文件（图像文件）
 
-**实际格式**：标准 JPEG 图像（未加密）
+**实际格式**：由文件内容决定（通常是 JPEG，未加密）
 
 ```
 文件头部（十六进制）:
@@ -188,10 +207,17 @@ ffd8 ffe0 0010 4a46 4946 0001 0100 0001 ...
 ```
 
 **文件信息**：
-- **真实格式**：JPEG
+- **真实格式**：由文件头（Magic Number）决定
+  - JPEG: `FF D8 FF` (JFIF 格式)
+  - PNG: `89 50 4E 47 0D 0A 1A 0A`
 - **扩展名**：.sij (可能是 "Simple Image JPEG" 的缩写)
 - **是否加密**：❌ 否（可以直接用图片查看器打开）
 - **数量**：501 张图片（对应 501 帧）
+
+**⚠️ 重要说明**：
+- 图片格式由**文件内容**决定，不是由 `need_png` 或 `res_fmt` 参数决定
+- 即使 `need_png=1`，如果文件内容是 JPEG（文件头是 `FF D8 FF`），它就是 JPEG 格式
+- `.sij` 扩展名只是标识符，实际格式需要检查文件头
 
 ---
 

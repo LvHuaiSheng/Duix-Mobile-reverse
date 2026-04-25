@@ -51,7 +51,9 @@ duix-heygen-reverse/
 ├── docs/                               # 📚 技术文档
 │   ├── encryption_analysis.md          # 加密机制分析
 │   ├── model_structure_analysis.md     # 模型结构分析
-│   └── ncnn_inference_analysis.md      # NCNN 推理流程分析
+│   ├── ncnn_inference_analysis.md      # NCNN 推理流程分析
+│   ├── config_parameters.md            # 配置文件参数详解
+│   └── android_data_flow.md            # Android 数据流分析
 │
 └── examples/                           # 💡 使用示例
     ├── inference.py                    # PyTorch 模型推理示例
